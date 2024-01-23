@@ -55,14 +55,24 @@ pub fn run() {
 
     let mut search_thread = test(input.clone(), results.clone());
 
-    let mut last_input: Vec<char> = Vec::new();
+    let mut last_input = String::new();
 
     while cont.read().unwrap().to_owned() {
-        if input.read().unwrap().clone().0 != last_input && search_thread.is_finished() {
+        let input_buff = input.read().unwrap().0.clone();
+        if String::from_iter(input.read().unwrap().clone().0).as_str() != last_input.as_str()
+            && search_thread.is_finished()
+        {
             search_thread = test(input.clone(), results.clone());
         }
+
         for (i, res) in results.read().unwrap().iter().enumerate() {
-            queue!(stdout(), MoveTo(2, 3 + i as u16), Print(res)).unwrap();
+            let spaces = String::from_iter(vec![' '; (size.0 as usize - 4) - res.chars().count()]);
+            queue!(
+                stdout(),
+                MoveTo(2, 3 + i as u16),
+                Print(format!("{}{}", res, spaces))
+            )
+            .unwrap();
         }
         queue!(
             stdout(),
@@ -73,7 +83,7 @@ pub fn run() {
         .unwrap();
         execute!(stdout()).unwrap();
         sleep(Duration::from_millis(1));
-        last_input = input.read().unwrap().0.to_owned();
+        last_input = String::from_iter(input_buff);
     }
 }
 
