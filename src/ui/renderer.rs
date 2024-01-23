@@ -1,6 +1,7 @@
 use std::{
     fs::read_dir,
     io::stdout,
+    os::unix::process,
     sync::{Arc, RwLock},
     thread::sleep,
     time::Duration,
@@ -61,14 +62,21 @@ pub fn run() {
 
     let mut search_thread = test(list.clone(), input.clone(), results.clone());
 
+    // let mut new_input = true;
+
+    let mut processing = false;
+
     let mut last_input = String::new();
 
     while cont.read().unwrap().to_owned() {
         let input_buff = input.read().unwrap().0.clone();
-        if String::from_iter(input.read().unwrap().clone().0).as_str() != last_input.as_str()
-            && search_thread.is_finished()
-        {
+        if String::from_iter(input.read().unwrap().clone().0).as_str() != last_input.as_str() {
             search_thread = test(list.clone(), input.clone(), results.clone());
+            // new_input = false;
+            processing = true;
+        }
+
+        if processing && search_thread.is_finished() {
             let res_list = results.read().unwrap();
             for (i, res) in res_list[0..(size.1 as usize - 4).min(res_list.len())]
                 .iter()
@@ -93,8 +101,8 @@ pub fn run() {
         )
         .unwrap();
         execute!(stdout()).unwrap();
-        sleep(Duration::from_millis(1));
         last_input = String::from_iter(input_buff);
+        sleep(Duration::from_millis(1));
     }
 }
 
