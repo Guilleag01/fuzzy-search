@@ -1,4 +1,5 @@
 use std::{
+    fs::read_dir,
     io::stdout,
     sync::{Arc, RwLock},
     thread::sleep,
@@ -53,7 +54,12 @@ pub fn run() {
 
     start_get_input(size.0 as usize, input.clone(), cont.clone(), cursor.clone());
 
-    let mut search_thread = test(input.clone(), results.clone());
+    let list = read_dir(".")
+        .unwrap()
+        .map(|x| x.unwrap().file_name().to_str().unwrap().to_string())
+        .collect::<Vec<String>>();
+
+    let mut search_thread = test(list.clone(), input.clone(), results.clone());
 
     let mut last_input = String::new();
 
@@ -62,18 +68,23 @@ pub fn run() {
         if String::from_iter(input.read().unwrap().clone().0).as_str() != last_input.as_str()
             && search_thread.is_finished()
         {
-            search_thread = test(input.clone(), results.clone());
+            search_thread = test(list.clone(), input.clone(), results.clone());
+            let res_list = results.read().unwrap();
+            for (i, res) in res_list[0..(size.1 as usize - 4).min(res_list.len())]
+                .iter()
+                .enumerate()
+            {
+                let spaces =
+                    String::from_iter(vec![' '; (size.0 as usize - 4) - res.chars().count()]);
+                queue!(
+                    stdout(),
+                    MoveTo(2, 3 + i as u16),
+                    Print(format!("{}{}", res, spaces))
+                )
+                .unwrap();
+            }
         }
 
-        for (i, res) in results.read().unwrap().iter().enumerate() {
-            let spaces = String::from_iter(vec![' '; (size.0 as usize - 4) - res.chars().count()]);
-            queue!(
-                stdout(),
-                MoveTo(2, 3 + i as u16),
-                Print(format!("{}{}", res, spaces))
-            )
-            .unwrap();
-        }
         queue!(
             stdout(),
             MoveTo(2, 1),
