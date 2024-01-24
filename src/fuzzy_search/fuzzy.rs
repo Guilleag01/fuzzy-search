@@ -1,5 +1,5 @@
 #[inline]
-pub fn fzs(pattern: &str, list: &mut Vec<String>) {
+pub fn fzs(pattern: &str, list: &mut [String]) {
     list.sort_by_key(|x| distance(pattern, x));
 }
 
