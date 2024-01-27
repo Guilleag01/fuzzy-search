@@ -12,6 +12,7 @@ pub fn test(
     list: Vec<String>,
     input: Arc<RwLock<(Vec<char>, String)>>,
     result: Arc<RwLock<Vec<String>>>,
+    n: usize,
 ) -> JoinHandle<()> {
     // let list = [
     //     "pear",
@@ -33,7 +34,7 @@ pub fn test(
     thread::spawn(move || {
         let pattern = String::from_iter(input.read().unwrap().0.clone());
 
-        fzs(pattern.as_str(), &mut list2);
+        fzs(pattern.as_str(), &mut list2, n);
         *result.write().unwrap() = list2;
     })
 }
