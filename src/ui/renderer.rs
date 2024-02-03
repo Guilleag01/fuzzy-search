@@ -1,7 +1,8 @@
 use std::{
     fs::{metadata, read_dir},
     io::stdout,
-    sync::{Arc, RwLock},
+    process::exit,
+    sync::{Arc, RwLock, RwLockReadGuard},
     thread::sleep,
     time::Duration,
 };
@@ -83,22 +84,7 @@ pub fn run(path: &str, recursive: usize) {
         if processing && search_thread.is_finished() {
             let res_list = results.read().unwrap();
             execute!(stdout(), Hide, MoveTo(2, 3), Print(clear_loading.clone())).unwrap();
-
-            for (i, res) in res_list[0..(size.1 as usize - 4).min(res_list.len())]
-                .iter()
-                .enumerate()
-            {
-                let spaces =
-                    String::from_iter(vec![' '; (size.0 as usize - 4) - res.chars().count()]);
-                queue!(
-                    stdout(),
-                    MoveTo(2, 3 + i as u16),
-                    Print(format!("{}{}", res, spaces)),
-                    // MoveTo(2, 3),
-                    // Print(format!("{} ", res_list.len())),
-                )
-                .unwrap();
-            }
+            print_list(res_list, size.1 as usize, size.1 as usize);
             queue!(stdout(), Show).unwrap();
             processing = false;
         }
@@ -121,6 +107,21 @@ pub fn run(path: &str, recursive: usize) {
 pub fn stop() {
     terminal::disable_raw_mode().unwrap();
     execute!(stdout(), Show, LeaveAlternateScreen,).unwrap();
+}
+
+fn print_list(res_list: RwLockReadGuard<'_, Vec<String>>, height: usize, width: usize) {
+    for (i, res) in res_list[0..(height - 4).min(res_list.len())]
+        .iter()
+        .enumerate()
+    {
+        let spaces = String::from_iter(vec![' '; (width - 4) - res.chars().count()]);
+        queue!(
+            stdout(),
+            MoveTo(2, 3 + i as u16),
+            Print(format!("{}{}", res, spaces)),
+        )
+        .unwrap();
+    }
 }
 
 fn print_frame(width: usize, height: usize) {
@@ -184,19 +185,32 @@ fn get_files(list: &mut Vec<String>, path: &str, recursive: usize) {
             );
         }
     } else {
-        for e in read_dir(path)
-            .unwrap()
-            .map(|x| x.unwrap().file_name().to_str().unwrap().to_string())
-            .collect::<Vec<String>>()
-        {
-            let e_path = format!("{}{}", path_format, e);
-            list.push(e_path.clone());
+        match read_dir(path) {
+            Ok(dirs) => {
+                for e in dirs
+                    .map(|x| x.unwrap().file_name().to_str().unwrap().to_string())
+                    .collect::<Vec<String>>()
+                {
+                    let e_path = format!("{}{}", path_format, e);
+                    list.push(e_path.clone());
 
-            if let Ok(met) = metadata(e_path.clone()) {
-                if met.is_dir() {
-                    get_files(list, e_path.as_str().clone(), recursive - 1);
+                    if let Ok(met) = metadata(e_path.clone()) {
+                        if met.is_dir() {
+                            get_files(list, e_path.as_str().clone(), recursive - 1);
+                        }
+                    }
                 }
             }
+            Err(err) => {
+                stop();
+                eprintln!("Error reading {}: {}", path, err);
+                exit(1);
+            }
         }
+        // for e in read_dir(path)
+        //     .unwrap()
+        //     .map(|x| x.unwrap().file_name().to_str().unwrap().to_string())
+        //     .collect::<Vec<String>>()
+        // {}
     }
 }
